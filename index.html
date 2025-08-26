@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SuparComputar</title>
+<style>
+  :root { --size: 50px; }
+  * { box-sizing: border-box; }
+  body {
+    background: #222;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    font-family: 'Consolas', monospace;
+  }
+  .computer {
+    top: -200px;
+    left: -325px;
+    width: 700px;
+    height: 400px;
+    background: #444;
+    border: 8px solid #222;
+    border-radius: 16px 16px 8px 8px;
+    box-shadow: 0 8px 32px #000a;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .screen {
+    width: 640px;
+    height: 335px;
+    background: linear-gradient(180deg, #222 80%, #333 100%);
+    border: 8px solid #222;
+    border-radius: 16px;
+    margin-top: 24px;
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    color: #0f0;
+    font-size: 1.1em;
+    box-shadow:
+      0 0 24px #0f08,
+      0 2px 24px #000a inset,
+      0 0 0 4px #111 inset;
+    position: relative;
+  }
+  .screen::after {
+    content: "";
+    position: absolute; inset: 0;
+    pointer-events: none;
+    border-radius: 16px;
+    background: linear-gradient(120deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.03) 60%, transparent 100%);
+    z-index: 2;
+  }
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #111;
+    background: linear-gradient(180deg, #1b1b1b, #141414);
+    position: relative;
+    z-index: 1;
+  }
+  .btn {
+    padding: 6px 12px;
+    background: #0a0a0a;
+    border: 1px solid #0f0;
+    color: #0f0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform .06s ease, box-shadow .06s ease, background .2s ease;
+    user-select: none;
+  }
+  .btn.active { background: #061; box-shadow: 0 0 10px #0f06 inset; }
+  .btn:active { transform: translateY(1px); }
+  .panel {
+    position: relative;
+    padding: 12px;
+    overflow: hidden;
+  }
+  #terminal {
+    white-space: pre-wrap;
+    line-height: 1.35;
+    min-height: 250px;
+  }
+  #placeholder { opacity: .7; }
+  #gameCanvas {
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+    display: none; 
+  }
+
+  /* Stand */
+  .stand {
+    
+    width: 60px; height: 200px; background: #333; border-radius: 0 0 16px 16px;
+    position: absolute; left: 50%; top: 250px; transform: translateX(-50%);
+    box-shadow: 0 4px 12px #0008; z-index: -1; display: flex; flex-direction: column; align-items: center;
+  }
+  .stand-bottom {
+    width: 120px; height: 24px; background: #111; border-radius: 24px 24px 0 0; position: absolute; left: 50%;
+    transform: translateX(-50%); top: 190px; box-shadow: 0 8px 24px #000a, 0 2px 8px #111a inset; z-index: 2; border: 3px solid #181818;
+  }
+
+  /* Keyboard */
+  .keyboard {
+    width: 745px; background: linear-gradient(180deg, #2b2b2b 60%, #444 100%);
+    border: 6px solid #181818; border-radius: 16px 16px 20px 20px; margin-top: 16px;
+    display: flex; flex-direction: column; gap: 6px; padding: 18px 24px 24px 24px;
+    box-shadow: 0 8px 32px #000a, 0 2px 8px #111a inset; position: relative; top: 280px; left: 400px;
+  }
+  .key-row { display: flex; gap: 6px; }
+  .key {
+    height: 38px; min-width: 38px; background: linear-gradient(180deg, #666 0%, #444 80%, #222 100%);
+    border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1em;
+    cursor: pointer; user-select: none; transition: background 0.1s, box-shadow 0.1s, transform 0.1s; padding: 0 8px;
+    box-shadow: 0 2px 4px #0008, 0 1px 0 #888 inset, 0 -2px 8px #111a inset; border: 1.5px solid #222; position: relative;
+  }
+  .key:active {
+    background: linear-gradient(180deg, #888 0%, #555 100%);
+    box-shadow: 0 1px 2px #0006, 0 1px 0 #aaa inset, 0 -2px 8px #222a inset; transform: translateY(2px) scale(0.98);
+  }
+  .key::after {
+    content: ""; position: absolute; top: 3px; left: 6px; right: 6px; height: 7px; border-radius: 4px;
+    background: linear-gradient(90deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03)); pointer-events: none;
+  }
+  .key.w2 { min-width: 76px; }
+  .key.w2-5 { min-width: 100px; }
+  .key.w3 { min-width: 120px; }
+  .key.w4 { min-width: 160px; }
+  .key.space { min-width: 280px; }
+
+  /* Small help overlay for Snake */
+  .help {
+    position: absolute; right: 10px; bottom: 10px; background: #0009; color: #0f0; padding: 6px 8px; border: 1px solid #0f0;
+    border-radius: 8px; font-size: .85em; z-index: 1;
+  }
+</style>
+</head>
+<body>
+  <div class="keyboard" id="keyboard"></div>
+  <div class="computer">
+    <div class="screen" id="screen">
+      <div class="toolbar">
+        <button class="btn active" id="modeType">Typing</button>
+        <button class="btn" id="modeSnake">Snake</button>
+        <button class="btn" id="clearBtn" title="Clear typing / Restart game">Clear/Restart</button>
+        <div style="margin-left:auto;opacity:.8;">SuparComputar ++</div>
+      </div>
+      <div class="panel">
+        <div id="terminal"><span id="placeholder">Wassup\nType something on that keyboard below 😏️</span></div>
+        <canvas id="gameCanvas" width="640" height="275" aria-label="Snake game"></canvas>
+        <div class="help" id="help" style="display:none">WASD or Arrow Keys • Space: Pause • Enter: Restart</div>
+      </div>
+    </div>
+    <div class="stand"><div class="stand-bottom"></div></div>
+  </div>
+
+<script>
+// --- Keyboard Layout 
+const keyLayout = [
+  [
+    {label:'Esc', key:'Escape'}, {label:'F1', key:'F1'}, {label:'F2', key:'F2'}, {label:'F3', key:'F3'}, {label:'F4', key:'F4'},
+    {label:'F5', key:'F5'}, {label:'F6', key:'F6'}, {label:'F7', key:'F7'}, {label:'F8', key:'F8'},
+    {label:'F9', key:'F9'}, {label:'F10', key:'F10'}, {label:'F11', key:'F11'}, {label:'F12', key:'F12'}, {label:'Home', key:'Home', class:'w3'}
+  ],
+  [
+    {label:'`', key:'`'}, {label:'1', key:'1'}, {label:'2', key:'2'}, {label:'3', key:'3'}, {label:'4', key:'4'}, {label:'5', key:'5'},
+    {label:'6', key:'6'}, {label:'7', key:'7'}, {label:'8', key:'8'}, {label:'9', key:'9'}, {label:'0', key:'0'},
+    {label:'-', key:'-'}, {label:'=', key:'='}, {label:'Backspace', key:'Backspace', class:'w3'}
+  ],
+  [
+    {label:'Tab', key:'Tab', class:'w2'}, {label:'Q', key:'Q'}, {label:'W', key:'W'}, {label:'E', key:'E'}, {label:'R', key:'R'}, {label:'T', key:'T'},
+    {label:'Y', key:'Y'}, {label:'U', key:'U'}, {label:'I', key:'I'}, {label:'O', key:'O'}, {label:'P', key:'P'},
+    {label:'[', key:'['}, {label:']', key:']'}, {label:'\\', key:'\\', class:'w2'}
+  ],
+  [
+    {label:'Caps', key:'CapsLock', class:'w2-5'}, {label:'A', key:'A'}, {label:'S', key:'S'}, {label:'D', key:'D'}, {label:'F', key:'F'}, {label:'G', key:'G'},
+    {label:'H', key:'H'}, {label:'J', key:'J'}, {label:'K', key:'K'}, {label:'L', key:'L'},
+    {label:';', key:';'}, {label:':', key:':'}, {label:'Enter', key:'Enter', class:'w2-5'}
+  ],
+  [
+    {label:'Shift', key:'Shift', class:'w3'}, {label:'Z', key:'Z'}, {label:'X', key:'X'}, {label:'C', key:'C'}, {label:'V', key:'V'}, {label:'B', key:'B'},
+    {label:'N', key:'N'}, {label:'M', key:'M'}, {label:',', key:','}, {label:'.', key:'.'}, {label:'/', key:'/'}, {label:'Shift', key:'Shift', class:'w3'}
+  ],
+  [
+    {label:'Ctrl', key:'Control', class:'w2'}, {label:'Win', key:'Meta', class:'w2'}, {label:'Alt', key:'Alt', class:'w2'},
+    {label:'', key:'Space', class:'space'}, {label:'Alt', key:'Alt', class:'w2'}, {label:'Fn', key:'Fn', class:'w2'}
+  ]
+];
+
+const keyboard = document.getElementById('keyboard');
+const terminal = document.getElementById('terminal');
+const placeholder = document.getElementById('placeholder');
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const help = document.getElementById('help');
+
+const btnType = document.getElementById('modeType');
+const btnSnake = document.getElementById('modeSnake');
+const btnClear = document.getElementById('clearBtn');
+
+let mode = 'type'; // 'type' | 'snake'
+let text = '';
+
+function setMode(next) {
+  mode = next;
+  const isType = mode === 'type';
+  terminal.style.display = isType ? 'block' : 'none';
+  canvas.style.display = isType ? 'none' : 'block';
+  help.style.display = isType ? 'none' : 'block';
+  btnType.classList.toggle('active', isType);
+  btnSnake.classList.toggle('active', !isType);
+  if (!isType) startGame();
+}
+
+btnType.addEventListener('click', () => setMode('type'));
+btnSnake.addEventListener('click', () => setMode('snake'));
+btnClear.addEventListener('click', () => {
+  if (mode === 'type') { text = ''; renderText(); }
+  else restartGame();
+});
+
+// Render on-screen keyboard
+keyLayout.forEach(row => {
+  const rowDiv = document.createElement('div');
+  rowDiv.className = 'key-row';
+  row.forEach(k => {
+    const key = document.createElement('div');
+    key.className = 'key' + (k.class ? ' ' + k.class : '');
+    key.textContent = k.label || '';
+    key.onclick = () => handleVirtualKey(k.key);
+    rowDiv.appendChild(key);
+  });
+  keyboard.appendChild(rowDiv);
+});
+
+function renderText() {
+  terminal.textContent = text || '';
+  if (!text) {
+    terminal.innerHTML = '<span id="placeholder">Wassup\ Type something on that keyboard below 😏️</span>';
+  }
+}
+
+function handleVirtualKey(code) {
+  // Normalize for our handlers
+  if (mode === 'type') {
+    if (code === 'Space') text += ' ';
+    else if (code === 'Backspace') text = text.slice(0, -1);
+    else if (code === 'Enter') text += '\n';
+    else if (code.length === 1) text += code;
+    renderText();
+  } else {
+    // Snake controls via on-screen keyboard: WASD + Space + Enter
+    const c = String(code).toLowerCase();
+    if (c === 'w') setDir(0,-1);
+    else if (c === 'a') setDir(-1,0);
+    else if (c === 's') setDir(0,1);
+    else if (c === 'd') setDir(1,0);
+    else if (code === 'Enter') restartGame();
+    else if (code === 'Space') togglePause();
+  }
+}
+
+// Physical keyboard support
+window.addEventListener('keydown', (e) => {
+  if (mode === 'type') {
+    if (e.key === 'Backspace') { e.preventDefault(); text = text.slice(0, -1); renderText(); return; }
+    if (e.key === 'Enter') { text += '\n'; renderText(); return; }
+    if (e.key === 'Tab') { e.preventDefault(); text += '\t'; renderText(); return; }
+    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) { text += e.key; renderText(); return; }
+  } else {
+    const k = e.key;
+    if (k === 'ArrowUp' || k.toLowerCase() === 'w') setDir(0,-1);
+    else if (k === 'ArrowLeft' || k.toLowerCase() === 'a') setDir(-1,0);
+    else if (k === 'ArrowDown' || k.toLowerCase() === 's') setDir(0,1);
+    else if (k === 'ArrowRight' || k.toLowerCase() === 'd') setDir(1,0);
+    else if (k === ' ') togglePause();
+    else if (k === 'Enter') restartGame();
+  }
+});
+
+// --- Snake Game ---
+const GRID = 25; // pixels per cell (virtual), canvas is 640x275
+const cols = Math.floor(canvas.width / GRID);
+const rows = Math.floor(canvas.height / GRID);
+
+let snake, dir, food, score, speed, timer, paused, gameOver;
+
+function initGame() {
+  snake = [{x: Math.floor(cols/2), y: Math.floor(rows/2)}];
+  dir = {x: 1, y: 0};
+  placeFood();
+  score = 0;
+  speed = 140; // ms per step
+  paused = false;
+  gameOver = false;
+}
+
+function startGame() {
+  if (!timer) {
+    initGame();
+    loop();
+  }
+}
+
+function restartGame() {
+  clearInterval(timer); timer = null;
+  initGame();
+  loop();
+}
+
+function togglePause() {
+  if (gameOver) return;
+  paused = !paused;
+}
+
+function placeFood() {
+  let x, y;
+  do {
+    x = Math.floor(Math.random() * cols);
+    y = Math.floor(Math.random() * rows);
+  } while (snake.some(s => s.x === x && s.y === y));
+  food = {x, y};
+}
+
+function setDir(x, y) {
+  if (gameOver) return;
+  // Prevent reversing into itself
+  if (snake.length > 1 && x === -dir.x && y === -dir.y) return;
+  dir = {x, y};
+}
+
+function loop() {
+  timer = setInterval(step, speed);
+}
+
+function step() {
+  draw();
+  if (paused || gameOver) return;
+  const head = {x: snake[0].x + dir.x, y: snake[0].y + dir.y};
+  // Wrap around
+  head.x = (head.x + cols) % cols;
+  head.y = (head.y + rows) % rows;
+
+  // Collision with self
+  if (snake.some(s => s.x === head.x && s.y === head.y)) {
+    gameOver = true;
+    draw();
+    return;
+  }
+  snake.unshift(head);
+
+  // Eat
+  if (head.x === food.x && head.y === food.y) {
+    score++;
+    if (speed > 60) { // speed up slightly
+      clearInterval(timer); speed -= 5; loop();
+    }
+    placeFood();
+  } else {
+    snake.pop();
+  }
+}
+
+function draw() {
+  // CRT backdrop
+  ctx.fillStyle = '#051105';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Grid (subtle)
+  ctx.globalAlpha = 0.2;
+  ctx.fillStyle = '#0f0';
+  for (let i = 0; i < cols; i++) {
+    ctx.fillRect(i*GRID, 0, 1, canvas.height);
+  }
+  for (let j = 0; j < rows; j++) {
+    ctx.fillRect(0, j*GRID, canvas.width, 1);
+  }
+  ctx.globalAlpha = 1;
+
+  // Food
+  drawCell(food.x, food.y, '#0f0');
+
+  // Snake
+  snake.forEach((s, idx) => {
+    const shade = idx === 0 ? '#9f9' : '#6f6';
+    drawCell(s.x, s.y, shade);
+  });
+
+  // HUD
+  ctx.fillStyle = '#0f0';
+  ctx.font = '16px Consolas, monospace';
+  ctx.fillText(`Score: ${score}  ${paused ? '— PAUSED —' : ''}${gameOver ? '— GAME OVER — Press Enter' : ''}`, 8, 20);
+}
+
+function drawCell(x, y, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(x*GRID + 2, y*GRID + 2, GRID - 4, GRID - 4);
+}
+
+let highscore = 0;
+
+// Load highscore from localStorage if available
+if (window.localStorage) {
+    const hs = localStorage.getItem('suparcomputar_highscore');
+    if (hs !== null) highscore = parseInt(hs, 10) || 0;
+}
+
+function updateHighscore() {
+    if (score > highscore) {
+        highscore = score;
+        if (window.localStorage) {
+            localStorage.setItem('suparcomputar_highscore', highscore);
+        }
+    }
+}
+
+// Update draw() to show highscore
+const origDraw = draw;
+draw = function() {
+    origDraw();
+    ctx.fillStyle = '#0f0';
+    ctx.font = '16px Consolas, monospace';
+    ctx.fillText(`Highscore: ${highscore}`, canvas.width - 160, 20);
+};
+
+// Update step() to check for new highscore
+const origStep = step;
+step = function() {
+    origStep();
+    if (gameOver) updateHighscore();
+};
+// Keep canvas crisp within the panel area
+function resizeCanvasToPanel() {
+  // Keep intrinsic size but CSS handles scaling; pixelated already set.
+}
+window.addEventListener('resize', resizeCanvasToPanel);
+resizeCanvasToPanel();
+
+// Start in typing mode
+renderText();
+</script>
+</body>
+</html>
