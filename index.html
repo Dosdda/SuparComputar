@@ -443,6 +443,17 @@ function resizeCanvasToPanel() {
 window.addEventListener('resize', resizeCanvasToPanel);
 resizeCanvasToPanel();
 
+// PACMAN DUDES !!
+const pacBtn = document.createElement('button');
+pacBtn.className = 'btn';
+pacBtn.id = 'modePacman';
+pacBtn.textContent = 'Coming soon..';
+pacBtn.disabled = true;
+btnSnake.after(pacBtn);
+
+
+// if you're reading this some of this stuff i just copied straight from stack overflow or had help from claude but most of it i did do myself
+
 // Start in typing mode
 renderText();
 </script>
